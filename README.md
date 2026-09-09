@@ -11,6 +11,9 @@ entsteht. Läuft als installierbare Web-App (PWA) offline auf dem Handy.
 * Leistungsgrad in Prozent, ampelfarbig: ab 100 % grün, ab 90 % gelb, darunter rot
 * darunter die Rechengrundlage (gearbeitete gegen erarbeitete Zeit) und der
   Vorsprung bzw. Rückstand in Minuten
+* der **Rechenweg**: die Formel mit genau den Zahlen, die gerade in den Feldern
+  stehen – Schritt für Schritt nachrechenbar. Wer ihn zuklappt, findet ihn beim
+  nächsten Start zugeklappt vor.
 * Start, „Bis“, Stückzeit und die fertigen Stück – letztere mit großen Tasten,
   die sich auch mit Handschuhen treffen lassen
 * zwei Knöpfe, die die eingestellten Schichtzeiten übernehmen
@@ -47,6 +50,29 @@ Leistungsgrad während der Pause nicht einbricht und danach wieder springt.
 
 Beispiel: 05:48 bis 09:00 sind 192 Minuten, minus 5 Minuten Kurzpause bleiben
 187. Bei 30 Stück à 6,15 min sind 184,5 Minuten erarbeitet – also 98,7 %.
+Genau diese Rechnung steht in der App unter der großen Zahl.
+
+**Pausen vor dem Start zählen nicht.** Wer um 12:00 einsteigt, hat die Pause um
+11:30 nicht gehabt – sie darf ihm also auch nicht von der Arbeitszeit abgezogen
+werden. Der Schichtrechner zieht die Hauptpause an dieser Stelle trotzdem ab und
+zeigt bei spätem Einstieg einen um rund 30 % zu hohen Leistungsgrad.
+
+## Geprüft
+
+Die Prozentrechnung ist gegen eine unabhängig geschriebene Referenzrechnung
+geprüft, mit Chromium über Playwright:
+
+* 22 Szenarien über beide Schichten, pünktlichen und verspäteten Einstieg,
+  laufende Pausen, Überstunden und krumme Stückzeiten – alle deckungsgleich
+  mit der Referenz
+* die Frühschicht Minute für Minute (492 Minuten einzeln nachgerechnet)
+* wer genau in der Vorgabezeit arbeitet, liest in jeder einzelnen Minute
+  100,0 % – auch während und nach den Pausen
+* ein Stück zu wenig bleibt immer unter 100 %
+* der Leistungsgrad steigt nie von allein, steht während der Pausen still und
+  läuft danach ohne Nachholsprung weiter
+* der angezeigte Rechenweg ergibt in 93 Kombinationen genau die angezeigte
+  Prozentzahl
 
 ## Dateien
 

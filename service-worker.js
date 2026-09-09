@@ -3,7 +3,7 @@
 //
 // Bei jeder Veröffentlichung SPEICHERSTAND hochzählen – zusammen mit VERSION
 // in index.html, sonst merkt der Browser nichts von der neuen Fassung.
-const SPEICHERSTAND = 'takt-light-1.0.0';
+const SPEICHERSTAND = 'takt-light-1.1.0';
 
 const DATEIEN = [
   './',

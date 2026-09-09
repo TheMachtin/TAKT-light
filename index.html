@@ -207,6 +207,39 @@
   .grad-abstand[data-lage="vor"] b{color:var(--gruen);}
   .grad-abstand[data-lage="zurueck"] b{color:var(--gelb);}
 
+  /* --- Rechenweg: die Formel mit den Zahlen, die gerade drinstehen ------- */
+  .rechenweg{
+    margin-top:14px;
+    padding:11px 12px;
+    background:var(--tief);
+    border:1px solid var(--kante);
+    border-radius:8px;
+  }
+  .rechenweg summary{
+    font-size:10px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--schrift-matt);
+    cursor:pointer;
+    list-style:none;
+  }
+  .rechenweg summary::-webkit-details-marker{display:none;}
+  .rechenweg summary::after{content:' ▾'; color:var(--gruen);}
+  .rechenweg[open] summary::after{content:' ▴';}
+  .rechenweg[open] summary{margin-bottom:10px;}
+  .rechenweg dl{
+    display:grid;
+    grid-template-columns:auto 1fr;
+    gap:6px 10px;
+    margin:0;
+    font-family:var(--mono);
+    font-size:11px;
+    line-height:1.35;
+  }
+  .rechenweg dt{color:var(--schrift-matt); white-space:nowrap;}
+  .rechenweg dd{margin:0; color:var(--schrift);}
+  .rechenweg dd b{color:var(--gruen); font-weight:700;}
+
   /* --- Stückzähler: mit Handschuhen bedienbar ---------------------------- */
   .zaehler{display:flex; gap:8px;}
   .zaehler input{
@@ -370,6 +403,11 @@
       <p class="grad" id="gradWert">–<span class="einheit">%</span></p>
       <p class="grad-basis" id="gradBasis">–</p>
       <p class="grad-abstand" id="gradAbstand" hidden></p>
+
+      <details class="rechenweg" id="rechenweg" open>
+        <summary>Rechenweg</summary>
+        <dl id="rechenwegListe"></dl>
+      </details>
     </div>
 
     <div class="karte">
@@ -560,7 +598,7 @@
 
 // Bei jeder Veröffentlichung hochzählen – zusammen mit SPEICHERSTAND in
 // service-worker.js, sonst merkt der Browser nichts von der neuen Fassung.
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const VERSIONSDATUM = '09.09.2026';
 
 // ---------------------------------------------------------------------------
@@ -648,6 +686,12 @@ function ganzzahl(text){
   return isFinite(wert) ? wert : 0;
 }
 
+// Zahl fürs Auge: deutsches Komma, ohne schleppende Null.
+function zahlText(wert, stellen){
+  const faktor = Math.pow(10, stellen === undefined ? 1 : stellen);
+  return String(Math.round(wert * faktor) / faktor).replace('.', ',');
+}
+
 function jetztInMinuten(){
   const d = new Date();
   return d.getHours() * 60 + d.getMinutes();
@@ -718,15 +762,21 @@ function pausenFenster(bisMinute){
   return fenster;
 }
 
-// Pausenminuten zwischen zwei Uhrzeiten. Eine gerade laufende Pause zählt
-// anteilig mit, sonst würde der Leistungsgrad während der Pause einbrechen
-// und danach wieder springen.
-function pauseZwischen(von, bis){
+// Pausenminuten zwischen zwei Uhrzeiten, aufgeschlüsselt nach den einzelnen
+// Pausen – die Aufschlüsselung braucht der Rechenweg. Eine gerade laufende
+// Pause zählt anteilig mit, sonst würde der Leistungsgrad während der Pause
+// einbrechen und danach wieder springen. Was vor `von` liegt, zählt nicht:
+// eine Pause, die vor dem Start war, hat niemanden Arbeitszeit gekostet.
+function pausenAbzug(von, bis){
+  const teile = [];
   let summe = 0;
   for(const f of pausenFenster(bis)){
-    summe += Math.max(0, Math.min(bis, f.bis) - Math.max(von, f.von));
+    const anteil = Math.max(0, Math.min(bis, f.bis) - Math.max(von, f.von));
+    if(anteil <= 0) continue;
+    summe += anteil;
+    teile.push({beginn: uhrzeitAus(f.von), minuten: anteil, laeuft: bis < f.bis});
   }
-  return summe;
+  return {summe, teile};
 }
 
 // Nur die Kurzpausen, die in die gewählte Schicht fallen – für den Hinweistext.
@@ -772,7 +822,9 @@ function rechnen(){
     return;
   }
 
-  const gearbeitet = (bis - start) - pauseZwischen(start, bis);
+  const abzug = pausenAbzug(start, bis);
+  const spanne = bis - start;
+  const gearbeitet = spanne - abzug.summe;
   if(gearbeitet <= 0){
     gradZeigen(null, 'Zwischen Start und „Bis“ liegt bisher nur Pause.');
     return;
@@ -780,13 +832,15 @@ function rechnen(){
 
   // Kern des Akkords: erarbeitete Vorgabezeit gegen tatsächlich verbrauchte Zeit.
   const erarbeitet = stueck * stueckzeit;
+  const prozent = (erarbeitet / gearbeitet) * 100;
   gradZeigen(
-    (erarbeitet / gearbeitet) * 100,
+    prozent,
     dauerText(gearbeitet) + ' gearbeitet · ' + dauerText(erarbeitet) + ' erarbeitet'
   );
   // Aus den angezeigten (also bereits gerundeten) Minuten gebildet: sonst steht
   // unter "3h 7min gearbeitet · 3h 5min erarbeitet" ein Rückstand von 3min.
   abstandZeigen(Math.round(erarbeitet) - Math.round(gearbeitet));
+  rechenwegZeigen({stueck, stueckzeit, erarbeitet, start, bis, spanne, abzug, gearbeitet, prozent});
 }
 
 // Grosse Zahl samt Ampelfarbe. 100 % heisst: genau in der Vorgabezeit gearbeitet.
@@ -796,6 +850,7 @@ function gradZeigen(prozent, basis){
     wert.innerHTML = '–<span class="einheit">%</span>';
     wert.removeAttribute('data-lage');
     el('gradAbstand').hidden = true;
+    el('rechenweg').hidden = true;   // ohne Ergebnis gibt es keinen Weg dahin
   } else {
     wert.innerHTML = prozent.toFixed(1) + '<span class="einheit">%</span>';
     wert.dataset.lage = prozent >= 100 ? 'gut' : (prozent >= 90 ? 'knapp' : 'schwach');
@@ -812,6 +867,39 @@ function abstandZeigen(differenz){
                     dauerText(Math.abs(differenz)) + '</b>';
   zeile.dataset.lage = vor ? 'vor' : 'zurueck';
   zeile.hidden = false;
+}
+
+// Die Formel mit genau den Zahlen, die gerade in den Feldern stehen. Wer der
+// grossen Zahl nicht traut, soll sie hier Schritt für Schritt nachrechnen können.
+function rechenwegZeigen({stueck, stueckzeit, erarbeitet, start, bis, spanne, abzug, gearbeitet, prozent}){
+  // Die erarbeitete Zeit ungerundet zeigen: wer mit dem Taschenrechner nachrechnet,
+  // muss auf dieselbe Prozentzahl kommen und nicht auf eine daneben.
+  const erarbeitetText = zahlText(erarbeitet, 3);
+
+  const zeilen = [
+    ['Erarbeitet', `${stueck} Stk × ${zahlText(stueckzeit, 3)} min = ${erarbeitetText} min`],
+    ['Zeitspanne', `${uhrzeitAus(start)} → ${uhrzeitAus(bis)} = ${zahlText(spanne)} min`]
+  ];
+
+  if(abzug.summe > 0){
+    const zeiten = abzug.teile
+      .map(teil => teil.beginn + (teil.laeuft ? ' läuft' : ''))
+      .join(' + ');
+    zeilen.push(['− Pausen', `${zahlText(abzug.summe)} min (${zeiten})`]);
+    zeilen.push(['Gearbeitet', `${zahlText(spanne)} − ${zahlText(abzug.summe)} = ${zahlText(gearbeitet)} min`]);
+  } else {
+    zeilen.push(['− Pausen', 'keine in dieser Zeitspanne']);
+  }
+
+  // Eine Nachkommastelle wie in der grossen Zahl darüber – sonst steht hier
+  // "100 %" und oben "100,0 %".
+  zeilen.push(['Ergebnis',
+    `${erarbeitetText} ÷ ${zahlText(gearbeitet)} × 100 = ` +
+    `<b>${prozent.toFixed(1).replace('.', ',')} %</b>`]);
+
+  el('rechenwegListe').innerHTML = zeilen
+    .map(([name, wert]) => `<dt>${name}</dt><dd>${wert}</dd>`).join('');
+  el('rechenweg').hidden = false;
 }
 
 function pausenHinweisZeigen(){
@@ -1096,6 +1184,12 @@ document.querySelectorAll('.reiter-knopf').forEach(knopf => {
 setInterval(() => { if(uhrLaeuftMit) uhrNachziehen(); }, 20000);
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState === 'visible' && uhrLaeuftMit) uhrNachziehen();
+});
+
+// Wer den Rechenweg zuklappt, will ihn am nächsten Morgen nicht wieder offen.
+el('rechenweg').open = speicher.lesen('rechenweg') !== 'zu';
+el('rechenweg').addEventListener('toggle', () => {
+  speicher.schreiben('rechenweg', el('rechenweg').open ? 'auf' : 'zu');
 });
 
 el('version').textContent = 'TAKT light ' + VERSION + ' · ' + VERSIONSDATUM;
