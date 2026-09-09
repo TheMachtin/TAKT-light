@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TAKT light</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a1d1a">
+<meta name="description" content="Leistungsgrad im Akkord – schlanke Fassung">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TAKT light">
+<style>
+  /* Schriften kommen aus dem Gerät. Ein Web-Font müsste geladen werden – in
+     der Halle ohne Empfang stünde die App dann vor leeren Kästchen. */
+  :root{
+    --grund:      #1a1d1a;
+    --flaeche:    #22261f;
+    --tief:       #171a15;
+    --kante:      #33392f;
+    --gruen:      #4FAD27;
+    --gruen-matt: #3a7f1d;
+    --schrift:    #e7ece2;
+    --schrift-matt:#8d968a;
+    --gelb:       #d99b2b;
+    --rot:        #c9503f;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  *{box-sizing:border-box;}
+  /* Muss der Klasse vorgehen: sonst zeigt etwa .neuerung{display:block}
+     das Band trotz hidden-Attribut als leeren Streifen. */
+  [hidden]{display:none !important;}
+
+  body{
+    margin:0;
+    padding:22px 14px 56px;
+    background:var(--grund);
+    color:var(--schrift);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size:15px;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+  }
+
+  .app{width:100%; max-width:460px;}
+
+  .kopf{display:flex; align-items:baseline; gap:8px; margin-bottom:20px;}
+  .marke{
+    font-family:var(--mono);
+    font-size:26px;
+    font-weight:700;
+    letter-spacing:0.12em;
+    color:var(--gruen);
+  }
+  .marke-zusatz{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:var(--schrift-matt);
+  }
+
+  /* --- Reiter ------------------------------------------------------------ */
+  .reiter{display:flex; gap:8px; margin-bottom:14px;}
+  .reiter-knopf{
+    flex:1;
+    padding:10px 4px;
+    background:transparent;
+    border:1px solid var(--kante);
+    border-radius:8px;
+    color:var(--schrift-matt);
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    cursor:pointer;
+  }
+  .reiter-knopf[aria-selected="true"]{
+    background:var(--flaeche);
+    border-color:var(--gruen-matt);
+    color:var(--gruen);
+    font-weight:700;
+  }
+
+  /* --- Flächen ----------------------------------------------------------- */
+  .karte{
+    background:var(--flaeche);
+    border:1px solid var(--kante);
+    border-radius:10px;
+    padding:18px;
+    margin-bottom:14px;
+  }
+  .karte > h2{
+    margin:0 0 14px;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--schrift-matt);
+  }
+
+  .zeile{display:flex; gap:10px; margin-bottom:12px;}
+  .zeile:last-child{margin-bottom:0;}
+  .feld{flex:1; min-width:0;}
+  .feld > label{
+    display:block;
+    margin-bottom:5px;
+    font-size:12px;
+    color:var(--schrift-matt);
+  }
+
+  input{
+    width:100%;
+    padding:9px 10px;
+    background:var(--tief);
+    border:1px solid var(--kante);
+    border-radius:6px;
+    color:var(--schrift);
+    font-family:var(--mono);
+    font-size:15px;
+    -moz-appearance:textfield;
+  }
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
+  input:focus{outline:none; border-color:var(--gruen);}
+  input:focus-visible{outline:2px solid var(--gruen); outline-offset:1px;}
+  input.fehlt{border-color:var(--gelb); background:rgba(217,155,43,0.08);}
+
+  .knopf{
+    width:100%;
+    padding:9px;
+    background:transparent;
+    border:1px solid var(--gruen-matt);
+    border-radius:6px;
+    color:var(--gruen);
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    cursor:pointer;
+  }
+  .knopf:hover{background:var(--gruen); color:#111;}
+  .knopf:focus-visible{outline:2px solid var(--gruen); outline-offset:2px;}
+  .knopf[aria-pressed="true"]{background:var(--gruen); color:#111; font-weight:700;}
+  .knopf-matt{border-color:var(--kante); color:var(--schrift-matt);}
+  .knopf-matt:hover{background:var(--kante); color:var(--schrift);}
+
+  .notiz{margin-top:8px; font-size:12px; line-height:1.45; color:var(--schrift-matt);}
+  .notiz-gelb{color:var(--gelb);}
+
+  /* --- Die grosse Zahl --------------------------------------------------- */
+  .anzeige{
+    background:var(--flaeche);
+    border:1px solid var(--kante);
+    border-radius:10px;
+    padding:20px 18px;
+    margin-bottom:14px;
+  }
+  .anzeige-kopf{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .anzeige-kopf .titel{
+    font-size:11px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--schrift-matt);
+  }
+  .anzeige-kopf .uhr{font-family:var(--mono); font-size:12px; color:var(--schrift-matt);}
+
+  .grad{
+    margin:0;
+    font-family:var(--mono);
+    font-size:54px;
+    font-weight:700;
+    line-height:1;
+    letter-spacing:-0.02em;
+    color:var(--schrift-matt);
+  }
+  .grad .einheit{font-size:24px; font-weight:400; color:var(--schrift-matt);}
+  .grad[data-lage="gut"]{color:var(--gruen);}
+  .grad[data-lage="knapp"]{color:var(--gelb);}
+  .grad[data-lage="schwach"]{color:var(--rot);}
+
+  .grad-basis{
+    margin:14px 0 0;
+    font-family:var(--mono);
+    font-size:12px;
+    line-height:1.5;
+    color:var(--schrift-matt);
+  }
+  .grad-abstand{
+    margin:4px 0 0;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--schrift-matt);
+  }
+  .grad-abstand b{font-weight:700;}
+  .grad-abstand[data-lage="vor"] b{color:var(--gruen);}
+  .grad-abstand[data-lage="zurueck"] b{color:var(--gelb);}
+
+  /* --- Stückzähler: mit Handschuhen bedienbar ---------------------------- */
+  .zaehler{display:flex; gap:8px;}
+  .zaehler input{
+    flex:1;
+    text-align:center;
+    font-size:22px;
+    font-weight:700;
+    padding:12px 10px;
+  }
+  .zaehler-taste{
+    flex:0 0 60px;
+    background:var(--tief);
+    border:1px solid var(--kante);
+    border-radius:6px;
+    color:var(--gruen);
+    font-family:var(--mono);
+    font-size:26px;
+    line-height:1;
+    cursor:pointer;
+  }
+  .zaehler-taste:active{background:var(--gruen); color:#111;}
+
+  /* --- Kleinteile -------------------------------------------------------- */
+  .merker{
+    padding:0 0 0 2px;
+    background:none;
+    border:none;
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--gelb);
+    text-decoration:underline;
+    cursor:pointer;
+  }
+  .merker[data-mit="ja"]{color:var(--gruen); text-decoration:none; cursor:default;}
+
+  .schalter{display:flex; gap:8px;}
+  .schalter .knopf{flex:1;}
+
+  .hinweis{
+    margin-bottom:14px;
+    padding:10px 12px;
+    border:1px solid var(--gelb);
+    border-radius:8px;
+    background:rgba(217,155,43,0.12);
+    color:var(--gelb);
+    font-size:12.5px;
+    line-height:1.45;
+  }
+  .hinweis-ruhig{
+    border-color:var(--gruen-matt);
+    background:rgba(79,173,39,0.08);
+    color:var(--schrift-matt);
+  }
+
+  .neuerung{
+    display:block;
+    width:100%;
+    margin-bottom:14px;
+    padding:11px 12px;
+    background:rgba(79,173,39,0.12);
+    border:1px solid var(--gruen);
+    border-radius:8px;
+    color:var(--gruen);
+    font-family:var(--mono);
+    font-size:12.5px;
+    text-align:left;
+    cursor:pointer;
+  }
+  .neuerung:hover{background:var(--gruen); color:#111;}
+
+  .pausen-zeile{display:flex; gap:8px; align-items:flex-end; margin-bottom:8px;}
+  .pausen-zeile .feld{flex:1;}
+  .pausen-weg{
+    flex:0 0 40px;
+    padding:9px 0;
+    background:var(--tief);
+    border:1px solid var(--kante);
+    border-radius:6px;
+    color:var(--rot);
+    font-family:var(--mono);
+    font-size:15px;
+    cursor:pointer;
+  }
+  .pausen-weg:hover{background:var(--rot); color:#fff;}
+  .pausen-leer{
+    padding:8px 0;
+    font-size:13px;
+    text-align:center;
+    color:var(--schrift-matt);
+  }
+
+  /* --- Anleitung --------------------------------------------------------- */
+  .anleitung summary{
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--schrift-matt);
+    cursor:pointer;
+    list-style:none;
+  }
+  .anleitung summary::-webkit-details-marker{display:none;}
+  .anleitung summary::after{content:' ▾'; color:var(--gruen);}
+  .anleitung[open] summary::after{content:' ▴';}
+  .anleitung[open] summary{margin-bottom:14px;}
+  .anleitung h3{margin:18px 0 6px; font-size:12px; font-weight:600; color:var(--gruen);}
+  .anleitung h3:first-of-type{margin-top:0;}
+  .anleitung p, .anleitung li{margin:0 0 8px; font-size:13px; line-height:1.55; color:var(--schrift-matt);}
+  .anleitung ul, .anleitung ol{margin:0 0 8px; padding-left:20px;}
+  .anleitung b{color:var(--schrift);}
+  .anleitung .formel{
+    margin:0 0 8px;
+    padding:10px 12px;
+    background:var(--tief);
+    border:1px solid var(--kante);
+    border-radius:6px;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--schrift);
+    overflow-x:auto;
+  }
+
+  .fusszeile{margin-top:6px; font-size:11px; text-align:center; color:var(--schrift-matt);}
+  .fusszeile[data-blitz="ja"]{color:var(--gruen);}
+  .version{
+    margin-top:4px;
+    font-family:var(--mono);
+    font-size:10px;
+    text-align:center;
+    color:#5c655a;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="kopf">
+    <span class="marke">TAKT</span>
+    <span class="marke-zusatz">light</span>
+  </header>
+
+  <button type="button" class="neuerung" id="neuerung" hidden></button>
+
+  <div class="hinweis" id="zeitHinweis" hidden></div>
+
+  <nav class="reiter" role="tablist">
+    <button type="button" class="reiter-knopf" role="tab" id="reiterAkkord"
+            data-seite="akkord" aria-controls="seiteAkkord" aria-selected="true">Akkord</button>
+    <button type="button" class="reiter-knopf" role="tab" id="reiterArbeitszeit"
+            data-seite="arbeitszeit" aria-controls="seiteArbeitszeit" aria-selected="false">Arbeitszeit</button>
+  </nav>
+
+  <!-- ===================== Akkord ====================== -->
+  <section class="seite" id="seiteAkkord" role="tabpanel" aria-labelledby="reiterAkkord">
+
+    <div class="anzeige">
+      <div class="anzeige-kopf">
+        <span class="titel">Leistungsgrad</span>
+        <span class="uhr" id="anzeigeUhr">–</span>
+      </div>
+      <p class="grad" id="gradWert">–<span class="einheit">%</span></p>
+      <p class="grad-basis" id="gradBasis">–</p>
+      <p class="grad-abstand" id="gradAbstand" hidden></p>
+    </div>
+
+    <div class="karte">
+      <h2>Zeiten</h2>
+
+      <div class="zeile">
+        <div class="feld">
+          <label for="start">Start</label>
+          <input type="time" id="start" value="05:48">
+        </div>
+        <div class="feld">
+          <label for="bis">Bis <button type="button" class="merker" id="uhrMerker"></button></label>
+          <input type="time" id="bis">
+        </div>
+      </div>
+
+      <div class="zeile">
+        <div class="feld">
+          <label for="stueckzeit">Stückzeit (min)</label>
+          <input type="text" id="stueckzeit" value="6.15" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*">
+        </div>
+      </div>
+
+      <div class="zeile">
+        <div class="feld">
+          <label for="stueck">Fertige Stück</label>
+          <div class="zaehler">
+            <button type="button" class="zaehler-taste" id="stueckWeniger" aria-label="Ein Stück weniger">−</button>
+            <input type="number" id="stueck" value="0" min="0" step="1" inputmode="numeric">
+            <button type="button" class="zaehler-taste" id="stueckMehr" aria-label="Ein Stück mehr">+</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="notiz" id="pausenNotiz"></p>
+      <p class="notiz notiz-gelb" id="freitagNotiz" hidden></p>
+    </div>
+
+    <div class="karte">
+      <h2>Schichtzeiten übernehmen</h2>
+      <div class="schalter">
+        <button type="button" class="knopf" id="schichtFrueh" aria-pressed="false">Früh</button>
+        <button type="button" class="knopf" id="schichtSpaet" aria-pressed="false">Spät</button>
+      </div>
+      <p class="notiz">
+        Setzt <b>Start</b> auf den Schichtbeginn und legt fest, welche Pausen gerechnet werden.
+        Der Start bleibt danach frei änderbar – die App verstellt ihn nicht von selbst.
+      </p>
+    </div>
+
+  </section>
+
+  <!-- ===================== Arbeitszeit ====================== -->
+  <section class="seite" id="seiteArbeitszeit" role="tabpanel" aria-labelledby="reiterArbeitszeit" hidden>
+
+    <div class="karte">
+      <h2>Frühschicht</h2>
+      <div class="zeile">
+        <div class="feld">
+          <label for="fruehBeginn">Beginn</label>
+          <input type="time" id="fruehBeginn">
+        </div>
+        <div class="feld">
+          <label for="fruehEnde">Ende</label>
+          <input type="time" id="fruehEnde">
+        </div>
+      </div>
+      <div class="zeile">
+        <div class="feld">
+          <label for="fruehPauseDauer">Pause (min)</label>
+          <input type="number" id="fruehPauseDauer" min="0" step="1" inputmode="numeric">
+        </div>
+        <div class="feld">
+          <label for="fruehPauseBeginn">Pause um</label>
+          <input type="time" id="fruehPauseBeginn">
+        </div>
+      </div>
+      <div class="zeile">
+        <div class="feld">
+          <label for="fruehEndeFreitag">Ende am Freitag</label>
+          <input type="time" id="fruehEndeFreitag">
+        </div>
+      </div>
+    </div>
+
+    <div class="karte">
+      <h2>Spätschicht</h2>
+      <div class="zeile">
+        <div class="feld">
+          <label for="spaetBeginn">Beginn</label>
+          <input type="time" id="spaetBeginn">
+        </div>
+        <div class="feld">
+          <label for="spaetEnde">Ende</label>
+          <input type="time" id="spaetEnde">
+        </div>
+      </div>
+      <div class="zeile">
+        <div class="feld">
+          <label for="spaetPauseDauer">Pause (min)</label>
+          <input type="number" id="spaetPauseDauer" min="0" step="1" inputmode="numeric">
+        </div>
+        <div class="feld">
+          <label for="spaetPauseBeginn">Pause um</label>
+          <input type="time" id="spaetPauseBeginn">
+        </div>
+      </div>
+      <div class="zeile">
+        <div class="feld">
+          <label for="spaetEndeFreitag">Ende am Freitag</label>
+          <input type="time" id="spaetEndeFreitag">
+        </div>
+      </div>
+    </div>
+
+    <div class="karte">
+      <h2>Bezahlte Kurzpausen</h2>
+      <div id="kurzpausenListe"></div>
+      <div class="zeile" style="margin-top:10px;">
+        <button type="button" class="knopf knopf-matt" id="kurzpauseNeu">+ Kurzpause</button>
+      </div>
+      <p class="notiz">
+        Gelten für beide Schichten. Gerechnet wird jeweils nur, was ins Zeitfenster
+        der gewählten Schicht fällt.
+      </p>
+    </div>
+
+    <details class="karte anleitung">
+      <summary>Anleitung</summary>
+
+      <h3>In drei Schritten</h3>
+      <ol>
+        <li>Stückzeit des Auftrags eintragen</li>
+        <li>Fertige Stück eintippen oder mit <b>+</b> hochzählen</li>
+        <li>Prozentzahl ablesen</li>
+      </ol>
+
+      <h3>Die Felder</h3>
+      <ul>
+        <li><b>Start</b> – wann du angefangen hast. Bleibt so stehen, wie du ihn setzt; nur die
+            Knöpfe <b>Früh</b> und <b>Spät</b> tragen den Schichtbeginn ein.</li>
+        <li><b>Bis</b> – läuft mit der Uhr mit. Trag eine feste Zeit ein, um eine beendete Schicht
+            nachzurechnen; <b>· zurück auf jetzt</b> hängt die Anzeige wieder an die Uhr.</li>
+        <li><b>Stückzeit</b> – die Vorgabezeit pro Stück. Komma und Punkt sind beide erlaubt.</li>
+        <li><b>Fertige Stück</b> – was du seit dem Start geschafft hast.</li>
+      </ul>
+
+      <h3>Was die Farbe heißt</h3>
+      <p>Ab <b>100 %</b> grün, ab <b>90 %</b> gelb, darunter rot. 100 % heißt: genau in der
+         Vorgabezeit gearbeitet.</p>
+
+      <h3>So wird gerechnet</h3>
+      <div class="formel">Leistungsgrad = Stück × Stückzeit ÷ gearbeitete Zeit × 100</div>
+      <p>Die gearbeitete Zeit ist <b>Bis − Start</b> abzüglich aller Pausen, die dazwischen liegen –
+         Hauptpause und bezahlte Kurzpausen.</p>
+      <p>Beispiel: 05:48 bis 09:00 sind 192 Minuten, minus 5 Minuten Kurzpause bleiben 187.
+         Bei 30 Stück à 6,15 min sind 184,5 Minuten erarbeitet, also <b>98,7 %</b>.</p>
+
+      <h3>Eine beendete Schicht nachrechnen</h3>
+      <p>Start und <b>Bis</b> auf die tatsächlichen Zeiten setzen, Stückzahl eintragen, ablesen.
+         Das geht auch noch am Abend.</p>
+
+      <h3>Arbeitszeit einstellen</h3>
+      <p>Feste Zeiten für Früh- und Spätschicht samt verkürztem Freitag sowie die bezahlten
+         Kurzpausen. Bleibt <b>Ende am Freitag</b> leer, gilt freitags das normale Ende.</p>
+
+      <h3>Speichern und Updates</h3>
+      <p>Jede Eingabe wird sofort gespeichert, auch wenn du die App schließt. Die Stückzahl
+         beginnt an einem neuen Tag wieder bei null. Gibt es eine neue Version, erscheint oben
+         ein grünes Band – erst ein Tipp darauf lädt sie, damit dir nichts mitten in der Arbeit
+         wegspringt.</p>
+    </details>
+
+    <p class="hinweis hinweis-ruhig">
+      Diese Zeiten gelten für die Knöpfe <b>Früh</b> und <b>Spät</b> im Reiter „Akkord“ und
+      für die Pausen, die von der gearbeiteten Zeit abgezogen werden.
+    </p>
+
+  </section>
+
+  <p class="fusszeile" id="fusszeile"></p>
+  <p class="version" id="version"></p>
+
+</div>
+
+<script>
+'use strict';
+
+// Bei jeder Veröffentlichung hochzählen – zusammen mit SPEICHERSTAND in
+// service-worker.js, sonst merkt der Browser nichts von der neuen Fassung.
+const VERSION = '1.0.0';
+const VERSIONSDATUM = '09.09.2026';
+
+// ---------------------------------------------------------------------------
+// Speicher. Eigener Namensraum, damit die Werte der grossen App unberührt
+// bleiben, falls beide auf demselben Gerät liegen.
+// ---------------------------------------------------------------------------
+const PRAEFIX = 'takt-light.';
+
+const speicher = {
+  lesen(schluessel){
+    try{ return localStorage.getItem(PRAEFIX + schluessel); }
+    catch(e){ return null; }
+  },
+  schreiben(schluessel, wert){
+    try{ localStorage.setItem(PRAEFIX + schluessel, wert); }
+    catch(e){ /* Privater Modus oder voller Speicher: dann eben nur für jetzt */ }
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Zustand
+// ---------------------------------------------------------------------------
+const STANDARD_SCHICHTEN = {
+  frueh: {beginn:'05:48', ende:'14:00', endeFreitag:'',      pauseDauer:30, pauseBeginn:'11:30'},
+  spaet: {beginn:'14:00', ende:'22:42', endeFreitag:'19:42', pauseDauer:30, pauseBeginn:'19:00'}
+};
+
+const STANDARD_KURZPAUSEN = [
+  {beginn:'08:00', dauer:5},
+  {beginn:'10:00', dauer:5},
+  {beginn:'16:30', dauer:5},
+  {beginn:'21:00', dauer:5}
+];
+
+let schichten   = JSON.parse(JSON.stringify(STANDARD_SCHICHTEN));
+let kurzpausen  = JSON.parse(JSON.stringify(STANDARD_KURZPAUSEN));
+let schichtart  = 'frueh';   // welche Schichtzeiten gerade gelten
+let uhrLaeuftMit = true;     // "Bis" hängt an der Uhr, bis es von Hand gesetzt wird
+
+const el = (id) => document.getElementById(id);
+
+const feld = {
+  start:      el('start'),
+  bis:        el('bis'),
+  stueckzeit: el('stueckzeit'),
+  stueck:     el('stueck')
+};
+
+// ---------------------------------------------------------------------------
+// Rechnen mit Uhrzeiten. Innerhalb der App ist eine Uhrzeit immer die Anzahl
+// Minuten seit Mitternacht – damit lässt sich ohne Datumsobjekte rechnen.
+// ---------------------------------------------------------------------------
+function minutenAus(text){
+  if(!text) return null;
+  const teile = String(text).split(':');
+  if(teile.length < 2) return null;
+  const std = Number(teile[0]), min = Number(teile[1]);
+  if(!isFinite(std) || !isFinite(min)) return null;
+  return std * 60 + min;
+}
+
+function uhrzeitAus(minuten){
+  const gesamt = Math.round(minuten);
+  const std = Math.floor(((gesamt % 1440) + 1440) % 1440 / 60);
+  const min = ((gesamt % 60) + 60) % 60;
+  return String(std).padStart(2, '0') + ':' + String(min).padStart(2, '0');
+}
+
+function dauerText(minuten){
+  const gesamt = Math.round(minuten);
+  const std = Math.floor(gesamt / 60);
+  const min = gesamt % 60;
+  return (std > 0 ? std + 'h ' : '') + min + 'min';
+}
+
+// Der Ziffernblock am Handy liefert je nach Gerätesprache ein Komma statt
+// eines Punkts – die Stückzeit muss beides annehmen.
+function kommazahl(text){
+  const wert = parseFloat(String(text ?? '').replace(',', '.'));
+  return isFinite(wert) ? wert : NaN;
+}
+
+function ganzzahl(text){
+  const wert = parseInt(String(text ?? ''), 10);
+  return isFinite(wert) ? wert : 0;
+}
+
+function jetztInMinuten(){
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+function istFreitag(){
+  return new Date().getDay() === 5;
+}
+
+function heuteAlsSchluessel(){
+  const d = new Date();
+  return d.getFullYear() + '-' +
+         String(d.getMonth() + 1).padStart(2, '0') + '-' +
+         String(d.getDate()).padStart(2, '0');
+}
+
+// ---------------------------------------------------------------------------
+// Pausen. Für den Akkord ist einerlei, ob eine Pause bezahlt ist – gezählt
+// wird nur, wann nicht produziert wird.
+// ---------------------------------------------------------------------------
+function schicht(){
+  return schichten[schichtart] || schichten.frueh;
+}
+
+// Das heute gültige Schichtende. Freitags ist die Woche wegen der 40 Stunden
+// früher zu Ende; ein leeres Feld heisst "normales Ende".
+function schichtendeHeute(){
+  const s = schicht();
+  return (istFreitag() && s.endeFreitag) ? s.endeFreitag : s.ende;
+}
+
+// Alle Pausenfenster der gewählten Schicht, überschneidungsfrei sortiert.
+// `bisMinute` weitet das Fenster für den Fall aus, dass über das Schichtende
+// hinaus gearbeitet wird – dann greifen auch die späteren Kurzpausen.
+function pausenFenster(bisMinute){
+  const s = schicht();
+  const roh = [];
+
+  const hauptVon = minutenAus(s.pauseBeginn);
+  const hauptDauer = Number(s.pauseDauer) || 0;
+  if(hauptVon !== null && hauptDauer > 0){
+    roh.push({von: hauptVon, bis: hauptVon + hauptDauer});
+  }
+
+  const fensterVon = minutenAus(s.beginn);
+  let fensterBis = minutenAus(schichtendeHeute());
+  if(fensterBis !== null && bisMinute !== null && bisMinute !== undefined && bisMinute > fensterBis){
+    fensterBis = bisMinute;
+  }
+
+  for(const kp of kurzpausen){
+    const von = minutenAus(kp.beginn);
+    const dauer = Number(kp.dauer) || 0;
+    if(von === null || dauer <= 0) continue;
+    if(fensterVon !== null && fensterBis !== null && (von < fensterVon || von >= fensterBis)) continue;
+    roh.push({von: von, bis: von + dauer});
+  }
+
+  // Überschneidungen zusammenlegen: eine Kurzpause, die in der Hauptpause
+  // liegt, darf nicht zweimal von der Arbeitszeit abgezogen werden.
+  roh.sort((a, b) => a.von - b.von);
+  const fenster = [];
+  for(const f of roh){
+    const letztes = fenster[fenster.length - 1];
+    if(letztes && f.von <= letztes.bis) letztes.bis = Math.max(letztes.bis, f.bis);
+    else fenster.push({von: f.von, bis: f.bis});
+  }
+  return fenster;
+}
+
+// Pausenminuten zwischen zwei Uhrzeiten. Eine gerade laufende Pause zählt
+// anteilig mit, sonst würde der Leistungsgrad während der Pause einbrechen
+// und danach wieder springen.
+function pauseZwischen(von, bis){
+  let summe = 0;
+  for(const f of pausenFenster(bis)){
+    summe += Math.max(0, Math.min(bis, f.bis) - Math.max(von, f.von));
+  }
+  return summe;
+}
+
+// Nur die Kurzpausen, die in die gewählte Schicht fallen – für den Hinweistext.
+function kurzpausenDerSchicht(){
+  const s = schicht();
+  const von = minutenAus(s.beginn);
+  const bis = minutenAus(schichtendeHeute());
+  return kurzpausen.filter(kp => {
+    const beginn = minutenAus(kp.beginn);
+    if(beginn === null || (Number(kp.dauer) || 0) <= 0) return false;
+    if(von === null || bis === null) return true;
+    return beginn >= von && beginn < bis;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Die Rechnung selbst
+// ---------------------------------------------------------------------------
+function rechnen(){
+  const start      = minutenAus(feld.start.value);
+  const bis        = minutenAus(feld.bis.value);
+  const stueckzeit = kommazahl(feld.stueckzeit.value);
+  const stueck     = Math.max(ganzzahl(feld.stueck.value), 0);
+
+  el('anzeigeUhr').textContent = feld.bis.value || '–';
+  pausenHinweisZeigen();
+  freitagHinweisZeigen();
+  zeitHinweisZeigen(start, bis);
+
+  const stueckzeitFehlt = !isFinite(stueckzeit) || stueckzeit <= 0;
+  feld.stueckzeit.classList.toggle('fehlt', stueckzeitFehlt);
+
+  if(stueckzeitFehlt){
+    gradZeigen(null, 'Stückzeit eintragen, dann wird gerechnet.');
+    return;
+  }
+  if(start === null || bis === null){
+    gradZeigen(null, 'Start und „Bis“ eintragen, dann wird gerechnet.');
+    return;
+  }
+  if(bis <= start){
+    gradZeigen(null, 'Die Zeit im Feld „Bis“ liegt vor dem Start.');
+    return;
+  }
+
+  const gearbeitet = (bis - start) - pauseZwischen(start, bis);
+  if(gearbeitet <= 0){
+    gradZeigen(null, 'Zwischen Start und „Bis“ liegt bisher nur Pause.');
+    return;
+  }
+
+  // Kern des Akkords: erarbeitete Vorgabezeit gegen tatsächlich verbrauchte Zeit.
+  const erarbeitet = stueck * stueckzeit;
+  gradZeigen(
+    (erarbeitet / gearbeitet) * 100,
+    dauerText(gearbeitet) + ' gearbeitet · ' + dauerText(erarbeitet) + ' erarbeitet'
+  );
+  // Aus den angezeigten (also bereits gerundeten) Minuten gebildet: sonst steht
+  // unter "3h 7min gearbeitet · 3h 5min erarbeitet" ein Rückstand von 3min.
+  abstandZeigen(Math.round(erarbeitet) - Math.round(gearbeitet));
+}
+
+// Grosse Zahl samt Ampelfarbe. 100 % heisst: genau in der Vorgabezeit gearbeitet.
+function gradZeigen(prozent, basis){
+  const wert = el('gradWert');
+  if(prozent === null || !isFinite(prozent)){
+    wert.innerHTML = '–<span class="einheit">%</span>';
+    wert.removeAttribute('data-lage');
+    el('gradAbstand').hidden = true;
+  } else {
+    wert.innerHTML = prozent.toFixed(1) + '<span class="einheit">%</span>';
+    wert.dataset.lage = prozent >= 100 ? 'gut' : (prozent >= 90 ? 'knapp' : 'schwach');
+  }
+  el('gradBasis').textContent = basis;
+}
+
+// Vorsprung oder Rückstand in Minuten – dieselbe Rechnung, nur greifbarer
+// als eine Prozentzahl.
+function abstandZeigen(differenz){
+  const zeile = el('gradAbstand');
+  const vor = differenz >= 0;
+  zeile.innerHTML = (vor ? 'Vorsprung: <b>+' : 'Rückstand: <b>−') +
+                    dauerText(Math.abs(differenz)) + '</b>';
+  zeile.dataset.lage = vor ? 'vor' : 'zurueck';
+  zeile.hidden = false;
+}
+
+function pausenHinweisZeigen(){
+  const s = schicht();
+  const dauer = Number(s.pauseDauer) || 0;
+  let text = dauer > 0
+    ? (s.pauseBeginn ? 'Pause: ' + dauer + ' min ab ' + s.pauseBeginn + ' Uhr' : 'Pause: ' + dauer + ' min')
+    : 'Keine Hauptpause eingetragen';
+
+  const kurz = kurzpausenDerSchicht();
+  if(kurz.length){
+    text += ' · ' + kurz.length + '× Kurzpause (' + kurz.map(kp => kp.beginn).join(', ') + ')';
+  }
+  el('pausenNotiz').textContent = text;
+}
+
+function freitagHinweisZeigen(){
+  const zeile = el('freitagNotiz');
+  const kurz = istFreitag() && schicht().endeFreitag;
+  if(kurz){
+    zeile.textContent = 'Freitag: verkürzte Schicht bis ' + schicht().endeFreitag + ' Uhr';
+    zeile.hidden = false;
+  } else {
+    zeile.hidden = true;
+  }
+}
+
+// Sagt Bescheid, wenn "Bis" ausserhalb der eingestellten Schicht liegt – nach
+// hinten ist das Überstunde und kein Fehler, nach vorn stimmt meist der Start nicht.
+function zeitHinweisZeigen(start, bis){
+  const hinweis = el('zeitHinweis');
+  const ende = minutenAus(schichtendeHeute());
+  const beginn = minutenAus(schicht().beginn);
+
+  if(bis !== null && ende !== null && bis > ende){
+    hinweis.textContent = 'Über das Schichtende (' + schichtendeHeute() + ' Uhr) hinaus – ' +
+                          'die Zeit danach zählt weiter mit.';
+    hinweis.hidden = false;
+  } else if(bis !== null && beginn !== null && start !== null && bis < beginn){
+    hinweis.textContent = feld.bis.value + ' liegt vor dem Schichtbeginn (' + schicht().beginn + ' Uhr).';
+    hinweis.hidden = false;
+  } else {
+    hinweis.hidden = true;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Uhr. Einzige Automatik der App: das Feld "Bis" hängt an der echten Uhrzeit,
+// bis es von Hand gesetzt wird.
+// ---------------------------------------------------------------------------
+function uhrNachziehen(){
+  feld.bis.value = uhrzeitAus(jetztInMinuten());
+  uhrLaeuftMit = true;
+  uhrMerkerZeigen();
+  rechnen();
+}
+
+function uhrMerkerZeigen(){
+  const merker = el('uhrMerker');
+  merker.textContent = uhrLaeuftMit ? '· läuft mit' : '· zurück auf jetzt';
+  merker.dataset.mit = uhrLaeuftMit ? 'ja' : 'nein';
+}
+
+// ---------------------------------------------------------------------------
+// Schichtzeiten übernehmen. Ausdrücklich auf Tastendruck – die App setzt den
+// Start nie von sich aus.
+// ---------------------------------------------------------------------------
+function schichtUebernehmen(art){
+  if(!schichten[art]) return;
+  schichtart = art;
+  feld.start.value = schichten[art].beginn;
+  schichtKnoepfeZeigen();
+  rechnen();
+  sichern();
+}
+
+function schichtKnoepfeZeigen(){
+  el('schichtFrueh').setAttribute('aria-pressed', String(schichtart === 'frueh'));
+  el('schichtSpaet').setAttribute('aria-pressed', String(schichtart === 'spaet'));
+}
+
+// ---------------------------------------------------------------------------
+// Einstellungen: Arbeitszeit und Kurzpausen
+// ---------------------------------------------------------------------------
+const SCHICHT_FELDER = [
+  ['frueh', 'beginn',      'fruehBeginn'],
+  ['frueh', 'ende',        'fruehEnde'],
+  ['frueh', 'endeFreitag', 'fruehEndeFreitag'],
+  ['frueh', 'pauseDauer',  'fruehPauseDauer'],
+  ['frueh', 'pauseBeginn', 'fruehPauseBeginn'],
+  ['spaet', 'beginn',      'spaetBeginn'],
+  ['spaet', 'ende',        'spaetEnde'],
+  ['spaet', 'endeFreitag', 'spaetEndeFreitag'],
+  ['spaet', 'pauseDauer',  'spaetPauseDauer'],
+  ['spaet', 'pauseBeginn', 'spaetPauseBeginn']
+];
+
+function arbeitszeitInFelder(){
+  for(const [art, name, id] of SCHICHT_FELDER){
+    el(id).value = schichten[art][name] ?? '';
+  }
+}
+
+function arbeitszeitAusFeldern(){
+  for(const [art, name, id] of SCHICHT_FELDER){
+    const wert = el(id).value;
+    if(name === 'pauseDauer'){
+      schichten[art][name] = wert === '' ? 0 : Math.max(ganzzahl(wert), 0);
+    } else if(name === 'endeFreitag'){
+      // Leer ist eine gültige Angabe: dann gilt freitags das normale Ende.
+      schichten[art][name] = wert;
+    } else if(wert){
+      schichten[art][name] = wert;
+    }
+  }
+  speicher.schreiben('arbeitszeit', JSON.stringify({schichten, kurzpausen}));
+  rechnen();
+}
+
+function kurzpausenZeichnen(){
+  const liste = el('kurzpausenListe');
+
+  if(kurzpausen.length === 0){
+    liste.innerHTML = '<p class="pausen-leer">Keine Kurzpausen eingetragen.</p>';
+    return;
+  }
+
+  liste.innerHTML = kurzpausen.map((kp, i) => `
+    <div class="pausen-zeile">
+      <div class="feld">
+        <label for="kpBeginn${i}">Beginn</label>
+        <input type="time" id="kpBeginn${i}" data-index="${i}" data-name="beginn" value="${kp.beginn}">
+      </div>
+      <div class="feld">
+        <label for="kpDauer${i}">Dauer (min)</label>
+        <input type="number" id="kpDauer${i}" data-index="${i}" data-name="dauer" min="0" step="1"
+               inputmode="numeric" value="${kp.dauer}">
+      </div>
+      <button type="button" class="pausen-weg" data-weg="${i}" aria-label="Kurzpause entfernen">✕</button>
+    </div>`).join('');
+
+  liste.querySelectorAll('[data-name]').forEach(eingabefeld => {
+    const uebernehmen = () => {
+      const kp = kurzpausen[Number(eingabefeld.dataset.index)];
+      kp[eingabefeld.dataset.name] = eingabefeld.dataset.name === 'dauer'
+        ? Math.max(ganzzahl(eingabefeld.value), 0)
+        : eingabefeld.value;
+      kurzpausenSichern();
+    };
+    eingabefeld.addEventListener('input', uebernehmen);
+    eingabefeld.addEventListener('change', uebernehmen);
+  });
+
+  liste.querySelectorAll('[data-weg]').forEach(knopf => {
+    knopf.addEventListener('click', () => {
+      kurzpausen.splice(Number(knopf.dataset.weg), 1);
+      kurzpausenZeichnen();
+      kurzpausenSichern();
+    });
+  });
+}
+
+function kurzpausenSichern(){
+  speicher.schreiben('arbeitszeit', JSON.stringify({schichten, kurzpausen}));
+  rechnen();
+}
+
+// ---------------------------------------------------------------------------
+// Sichern und Laden. Jede Eingabe landet im Speicher, ohne dass etwas
+// bestätigt werden muss; kurz gebündelt, damit beim Tippen nicht pro Zeichen
+// geschrieben wird.
+// ---------------------------------------------------------------------------
+let sicherUhr = null;
+
+function sichern(){
+  clearTimeout(sicherUhr);
+  sicherUhr = setTimeout(() => {
+    speicher.schreiben('eingabe', JSON.stringify({
+      datum:      heuteAlsSchluessel(),
+      schichtart: schichtart,
+      start:      feld.start.value,
+      stueckzeit: feld.stueckzeit.value,
+      stueck:     Math.max(ganzzahl(feld.stueck.value), 0)
+    }));
+  }, 250);
+}
+
+function laden(){
+  try{
+    const roh = speicher.lesen('arbeitszeit');
+    if(roh){
+      const daten = JSON.parse(roh);
+      for(const art of ['frueh', 'spaet']){
+        if(daten.schichten && daten.schichten[art]){
+          schichten[art] = Object.assign({}, STANDARD_SCHICHTEN[art], daten.schichten[art]);
+        }
+      }
+      if(Array.isArray(daten.kurzpausen)) kurzpausen = daten.kurzpausen;
+    }
+  }catch(e){ /* dann eben mit den Standardzeiten weiter */ }
+
+  try{
+    const roh = speicher.lesen('eingabe');
+    if(roh){
+      const daten = JSON.parse(roh);
+      if(schichten[daten.schichtart]) schichtart = daten.schichtart;
+      if(daten.start) feld.start.value = daten.start;
+      if(daten.stueckzeit) feld.stueckzeit.value = daten.stueckzeit;
+      // Die Stückzahl gehört zu genau einem Tag. Ein alter Stand würde den
+      // Leistungsgrad am nächsten Morgen unbemerkt verfälschen.
+      feld.stueck.value = (daten.datum === heuteAlsSchluessel()) ? Math.max(ganzzahl(daten.stueck), 0) : 0;
+    }
+  }catch(e){ /* noch nichts gespeichert */ }
+
+  arbeitszeitInFelder();
+  kurzpausenZeichnen();
+  schichtKnoepfeZeigen();
+}
+
+function fussmeldung(text){
+  const zeile = el('fusszeile');
+  zeile.textContent = text;
+  zeile.dataset.blitz = 'ja';
+  clearTimeout(fussmeldung.uhr);
+  fussmeldung.uhr = setTimeout(() => {
+    zeile.textContent = 'Alle Eingaben werden automatisch gespeichert.';
+    zeile.dataset.blitz = 'nein';
+  }, 1800);
+}
+
+// ---------------------------------------------------------------------------
+// Bedienung
+// ---------------------------------------------------------------------------
+[feld.start, feld.stueckzeit, feld.stueck].forEach(eingabefeld => {
+  eingabefeld.addEventListener('input', () => { rechnen(); sichern(); });
+});
+
+// Von Hand gesetzt heisst: stehen lassen. Erst der Merker im Etikett hängt die
+// Anzeige wieder an die laufende Uhr.
+feld.bis.addEventListener('input', () => {
+  uhrLaeuftMit = false;
+  uhrMerkerZeigen();
+  rechnen();
+});
+el('uhrMerker').addEventListener('click', () => { if(!uhrLaeuftMit) uhrNachziehen(); });
+
+function stueckAendern(schritt){
+  feld.stueck.value = Math.max(ganzzahl(feld.stueck.value) + schritt, 0);
+  rechnen();
+  sichern();
+}
+el('stueckMehr').addEventListener('click', () => stueckAendern(1));
+el('stueckWeniger').addEventListener('click', () => stueckAendern(-1));
+
+el('schichtFrueh').addEventListener('click', () => schichtUebernehmen('frueh'));
+el('schichtSpaet').addEventListener('click', () => schichtUebernehmen('spaet'));
+
+SCHICHT_FELDER.forEach(([, , id]) => {
+  el(id).addEventListener('input', arbeitszeitAusFeldern);
+  el(id).addEventListener('change', arbeitszeitAusFeldern);
+});
+
+el('kurzpauseNeu').addEventListener('click', () => {
+  kurzpausen.push({beginn:'12:00', dauer:5});
+  kurzpausenZeichnen();
+  kurzpausenSichern();
+  fussmeldung('Kurzpause hinzugefügt.');
+});
+
+document.querySelectorAll('.reiter-knopf').forEach(knopf => {
+  knopf.addEventListener('click', () => {
+    document.querySelectorAll('.reiter-knopf').forEach(k => {
+      const gewaehlt = k === knopf;
+      k.setAttribute('aria-selected', String(gewaehlt));
+      el(k.getAttribute('aria-controls')).hidden = !gewaehlt;
+    });
+  });
+});
+
+// Die Uhr läuft weiter, während die App im Hintergrund liegt; beim Zurückkommen
+// wäre die Anzeige sonst minutenlang alt.
+setInterval(() => { if(uhrLaeuftMit) uhrNachziehen(); }, 20000);
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && uhrLaeuftMit) uhrNachziehen();
+});
+
+el('version').textContent = 'TAKT light ' + VERSION + ' · ' + VERSIONSDATUM;
+el('fusszeile').textContent = 'Alle Eingaben werden automatisch gespeichert.';
+
+laden();
+uhrNachziehen();
+
+// ---------------------------------------------------------------------------
+// Aktualisierung. Eine laufende App holt von sich aus keine neue Fassung – sie
+// wird deshalb regelmässig danach gefragt. Umgeschaltet wird erst auf Tippen,
+// damit mitten in der Schicht keine Eingabe verloren geht.
+// ---------------------------------------------------------------------------
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').then(anmeldung => {
+
+      const anbieten = (arbeiter) => {
+        if(!arbeiter || !navigator.serviceWorker.controller) return; // Erstinstallation, kein Update
+        const band = el('neuerung');
+        band.textContent = 'Neue Version verfügbar · zum Laden tippen';
+        band.hidden = false;
+        band.onclick = () => {
+          band.textContent = 'Wird geladen …';
+          arbeiter.postMessage({typ: 'jetztWechseln'});
+        };
+      };
+
+      if(anmeldung.waiting) anbieten(anmeldung.waiting);
+
+      anmeldung.addEventListener('updatefound', () => {
+        const neu = anmeldung.installing;
+        if(!neu) return;
+        neu.addEventListener('statechange', () => {
+          if(neu.state === 'installed') anbieten(neu);
+        });
+      });
+
+      setInterval(() => anmeldung.update().catch(() => {}), 30 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => {
+        if(document.visibilityState === 'visible') anmeldung.update().catch(() => {});
+      });
+    }).catch(() => {});
+
+    let neuGeladen = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if(neuGeladen) return;   // controllerchange kann mehrfach feuern
+      neuGeladen = true;
+      location.reload();
+    });
+  });
+}
+</script>
+</body>
+</html>
